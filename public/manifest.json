@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Eglion Font Manager",
+  "version": "1.0.0",
+  "description": "Detect and manage fonts on web pages",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "32": "ICON.png",
+      "128": "Icon-512.png"
+    }
+  },
+  "icons": {
+    "32": "ICON.png",
+    "128": "Icon-512.png"
+  }
+}
