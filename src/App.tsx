@@ -14,15 +14,11 @@ function App() {
   const [filteredFonts, setFilteredFonts] = useState<GoogleFont[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isApplyingFont, setIsApplyingFont] = useState(false);
-  const [lastAppliedFont, setLastAppliedFont] = useState<string>('');
   const [selectedFont, setSelectedFont] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [loadingStatus, setLoadingStatus] = useState<Record<string, boolean>>({});
   const [virtualizedFonts, setVirtualizedFonts] = useState<GoogleFont[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50;
-  const [totalPages, setTotalPages] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -203,7 +199,6 @@ function App() {
         });
 
         setFont(selectedFont);
-        setLastAppliedFont(selectedFont);
     } catch (error) {
         console.error("Error in applyFont:", error);
         setError(error instanceof Error ? error.message : "Failed to apply font");
@@ -230,19 +225,6 @@ function App() {
     } catch (error) {
       console.error("Error applying color:", error);
       setError("Failed to apply color");
-    }
-  };
-
-  const loadFont = async (fontFamily: string) => {
-    setLoadingStatus(prev => ({ ...prev, [fontFamily]: true }));
-    try {
-      // Font loading logic here
-      return true;
-    } catch (error) {
-      console.error(`Failed to load font: ${fontFamily}`, error);
-      return false;
-    } finally {
-      setLoadingStatus(prev => ({ ...prev, [fontFamily]: false }));
     }
   };
 
@@ -289,30 +271,11 @@ function App() {
     }
   }, [handleScroll]);
 
-  // Pagination controls
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-  const handleError = (error: Error) => {
-    console.error(error);
-    setError("Failed to apply font");
-    setTimeout(() => setError(null), 3000);
-  };
-
   return (
     <div className="app">
       <header>
         <img src={Lion} className="logo" alt="Logo" />
-        <h1>Eglion</h1>
+        <h1>Ui-libertatem</h1>
       </header>
 
       <nav className="tab-navigation">
