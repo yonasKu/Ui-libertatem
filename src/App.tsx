@@ -2,7 +2,7 @@ import Lion from "./assets/Lion.png";
 import "./App.css";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { FontDetector, GoogleFont } from "./utils/fontDetector";
-import { StyleManager } from "./utils/styleManager";
+import { StyleManager, DetectedColor } from "./utils/styleManager";
 
 function App() {
   const [colour, setColour] = useState<string>("");
@@ -21,6 +21,7 @@ function App() {
   const ITEMS_PER_PAGE = 50;
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const [detectedColors, setDetectedColors] = useState<DetectedColor[]>([]);
 
   const fontCategories = [
     { value: 'all', label: 'All Fonts' },
@@ -109,6 +110,30 @@ function App() {
     } catch (error) {
       console.error("Error detecting fonts:", error);
       setError("Failed to detect fonts");
+    }
+  };
+
+  const detectColors = async () => {
+    setError(null);
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      
+      if (!tab?.id) throw new Error("No active tab found");
+
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: StyleManager.detectPageColors,
+      });
+
+      if (results?.[0]?.result) {
+        setDetectedColors(results[0].result);
+      }
+    } catch (error) {
+      console.error("Error detecting colors:", error);
+      setError("Failed to detect colors");
     }
   };
 
@@ -413,11 +438,40 @@ function App() {
 
         {activeTab === 'colorChanger' && (
           <div>
+            <button onClick={detectColors}>Detect Page Colors</button>
+            
+            {detectedColors.length > 0 && (
+                <div className="detected-colors">
+                    <h3>Detected Colors:</h3>
+                    <div className="color-grid">
+                        {detectedColors.map((color, index) => (
+                            <div 
+                                key={index} 
+                                className="color-item"
+                                onClick={() => setColour(color.value)}
+                            >
+                                <div 
+                                    className="color-preview" 
+                                    style={{ 
+                                        backgroundColor: color.value,
+                                        border: '1px solid var(--border-color)'
+                                    }}
+                                />
+                                <div className="color-info">
+                                    <span>{color.value}</span>
+                                    <small>Used {color.count} times</small>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <label>Choose Background Color:</label>
             <input
-              type="color"
-              onChange={(e) => setColour(e.target.value)}
-              value={colour}
+                type="color"
+                onChange={(e) => setColour(e.target.value)}
+                value={colour}
             />
             <button onClick={applyColor}>Apply Color</button>
           </div>

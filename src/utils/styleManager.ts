@@ -1,4 +1,168 @@
+export interface DetectedColor {
+    value: string;
+    count: number;
+    elements: string[]; // Store selectors or element descriptions
+}
+
 export class StyleManager {
+    static detectPageColors = (): DetectedColor[] => {
+        try {
+            const colorMap = new Map<string, DetectedColor>();
+            
+            // Helper function to convert RGB/RGBA to HEX
+            const rgbToHex = (rgb: string): string => {
+                // Handle rgba
+                if (rgb.startsWith('rgba')) {
+                    const matches = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/);
+                    if (!matches) return rgb;
+                    const r = parseInt(matches[1]);
+                    const g = parseInt(matches[2]);
+                    const b = parseInt(matches[3]);
+                    const a = matches[4] ? parseFloat(matches[4]) : 1;
+                    
+                    if (a === 1) {
+                        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+                    }
+                    return rgb; // Keep rgba format if alpha != 1
+                }
+                
+                // Handle rgb
+                if (rgb.startsWith('rgb')) {
+                    const matches = rgb.match(/^rgb?\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                    if (!matches) return rgb;
+                    const r = parseInt(matches[1]);
+                    const g = parseInt(matches[2]);
+                    const b = parseInt(matches[3]);
+                    return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+                }
+                
+                return rgb;
+            };
+
+            // Extract colors from box-shadow
+            const extractShadowColors = (shadow: string): string[] => {
+                const colors: string[] = [];
+                const colorRegex = /(#[0-9a-f]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\))/gi;
+                const matches = shadow.match(colorRegex);
+                if (matches) {
+                    colors.push(...matches);
+                }
+                return colors;
+            };
+
+            // Helper function to add color to map
+            const addColor = (color: string, element: string) => {
+                const hexColor = rgbToHex(color.toLowerCase());
+                if (hexColor === 'transparent' || hexColor === 'inherit' || hexColor === 'initial' || hexColor === 'none') return;
+                
+                if (colorMap.has(hexColor)) {
+                    const existing = colorMap.get(hexColor)!;
+                    existing.count++;
+                    if (!existing.elements.includes(element)) {
+                        existing.elements.push(element);
+                    }
+                } else {
+                    colorMap.set(hexColor, {
+                        value: hexColor,
+                        count: 1,
+                        elements: [element]
+                    });
+                }
+            };
+
+            // Get all elements
+            const elements = document.querySelectorAll('*');
+            
+            elements.forEach((el) => {
+                const computedStyle = window.getComputedStyle(el);
+                const elementDesc = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${Array.from(el.classList).map(c => '.' + c).join('')}`;
+
+                // Check background colors
+                const backgroundColor = computedStyle.backgroundColor;
+                if (backgroundColor) {
+                    addColor(backgroundColor, `${elementDesc} (background)`);
+                }
+
+                // Check text color
+                const color = computedStyle.color;
+                if (color) {
+                    addColor(color, `${elementDesc} (text)`);
+                }
+
+                // Check border colors (all sides)
+                ['Top', 'Right', 'Bottom', 'Left'].forEach(side => {
+                    const borderColor = computedStyle.getPropertyValue(`border-${side.toLowerCase()}-color`);
+                    const borderWidth = computedStyle.getPropertyValue(`border-${side.toLowerCase()}-width`);
+                    if (borderColor && borderWidth !== '0px') {
+                        addColor(borderColor, `${elementDesc} (border-${side.toLowerCase()})`);
+                    }
+                });
+
+                // Check outline color
+                const outlineColor = computedStyle.outlineColor;
+                const outlineWidth = computedStyle.outlineWidth;
+                if (outlineColor && outlineWidth !== '0px') {
+                    addColor(outlineColor, `${elementDesc} (outline)`);
+                }
+
+                // Check box-shadow
+                const boxShadow = computedStyle.boxShadow;
+                if (boxShadow && boxShadow !== 'none') {
+                    const shadowColors = extractShadowColors(boxShadow);
+                    shadowColors.forEach(shadowColor => {
+                        addColor(shadowColor, `${elementDesc} (box-shadow)`);
+                    });
+                }
+
+                // Check text-shadow
+                const textShadow = computedStyle.textShadow;
+                if (textShadow && textShadow !== 'none') {
+                    const shadowColors = extractShadowColors(textShadow);
+                    shadowColors.forEach(shadowColor => {
+                        addColor(shadowColor, `${elementDesc} (text-shadow)`);
+                    });
+                }
+
+                // Check caret color
+                const caretColor = computedStyle.caretColor;
+                if (caretColor && caretColor !== 'auto') {
+                    addColor(caretColor, `${elementDesc} (caret)`);
+                }
+
+                // Check text decoration color
+                const textDecorationColor = computedStyle.textDecorationColor;
+                if (textDecorationColor) {
+                    addColor(textDecorationColor, `${elementDesc} (text-decoration)`);
+                }
+            });
+
+            // Check CSS Variables (Custom Properties)
+            const rootStyle = getComputedStyle(document.documentElement);
+            for (const prop of rootStyle) {
+                if (prop.startsWith('--') && (
+                    prop.includes('color') || 
+                    prop.includes('background') || 
+                    prop.includes('border') ||
+                    prop.includes('shadow') ||
+                    prop.includes('outline')
+                )) {
+                    const value = rootStyle.getPropertyValue(prop).trim();
+                    if (value.match(/#|rgb|hsl/i)) {
+                        addColor(value, `CSS Variable: ${prop}`);
+                    }
+                }
+            }
+
+            // Sort colors by usage count
+            return Array.from(colorMap.values())
+                .sort((a, b) => b.count - a.count);
+
+        } catch (error) {
+            console.error('Error detecting colors:', error);
+            return [];
+        }
+    };
+
     static applyBackgroundColor = (color: string) => {
         try {
             // Remove existing color styles
