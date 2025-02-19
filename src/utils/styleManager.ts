@@ -188,7 +188,7 @@ export class StyleManager {
             const platform = StyleManager.detectPlatform();
 
             if (options.mode === 'background') {
-                styleContent = StyleManager.generateBackgroundStyles(options.color, platform, options.affectText, options.preserveImages);
+                styleContent = StyleManager.generateBackgroundStyles(options.color, platform, options.preserveImages);
             } else if (options.mode === 'text') {
                 styleContent = StyleManager.generateTextStyles(options.color, platform);
             }
@@ -216,7 +216,6 @@ export class StyleManager {
     private static generateBackgroundStyles(
         color: string, 
         platform: string, 
-        affectText: boolean = true,
         preserveImages: boolean = false
     ): string {
         let styles = '';
@@ -421,7 +420,6 @@ export class StyleManager {
                             styleContent = StyleManager.generateBackgroundStyles(
                                 options.color, 
                                 platform, 
-                                options.affectText, 
                                 options.preserveImages
                             );
                         } else if (options.mode === 'text') {

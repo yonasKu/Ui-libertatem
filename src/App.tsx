@@ -2,10 +2,10 @@ import Lion from "./assets/Lion.png";
 import "./App.css";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { FontDetector, GoogleFont } from "./utils/fontDetector";
-import { StyleManager, DetectedColor, ColorMode, ThemeOptions } from "./utils/styleManager";
+import { StyleManager, DetectedColor } from "./utils/styleManager";
 
 function App() {
-  const [colour, setColour] = useState<string>("");
+
   const [font, setFont] = useState<string>("");
   const [detectedFonts, setDetectedFonts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,6 @@ function App() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const [detectedColors, setDetectedColors] = useState<DetectedColor[]>([]);
-  const [colorMode, setColorMode] = useState<ColorMode>('background');
   const [affectText, setAffectText] = useState(true);
   const [preserveImages, setPreserveImages] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>("#ffffff");
