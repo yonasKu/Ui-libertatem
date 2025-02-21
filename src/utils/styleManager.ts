@@ -1,10 +1,23 @@
+import { PLATFORM_SELECTORS, detectPlatform } from './platformSelectors';
+
 export interface DetectedColor {
     value: string;
     count: number;
-    elements: string[]; // Store selectors or element descriptions
+    elements: string[];
+}
+
+export type ColorMode = 'background' | 'text' | 'custom';
+
+export interface ThemeOptions {
+    mode: ColorMode;
+    color: string;
+    affectText: boolean;
+    preserveImages: boolean;
 }
 
 export class StyleManager {
+    private static readonly platformSelectors = PLATFORM_SELECTORS;
+
     static detectPageColors = (): DetectedColor[] => {
         try {
             const colorMap = new Map<string, DetectedColor>();
@@ -163,180 +176,268 @@ export class StyleManager {
         }
     };
 
-    static applyBackgroundColor = (color: string) => {
+    static applyTheme = (options: ThemeOptions): boolean => {
         try {
-            // Remove existing color styles
+            // Remove existing styles
             document.querySelectorAll('style[data-eglion-color]').forEach(el => el.remove());
+            
             const style = document.createElement('style');
             style.setAttribute('data-eglion-color', 'true');
+            
+            let styleContent = '';
+            const platform = StyleManager.detectPlatform();
 
-            // Universal selectors + Platform specific selectors
-            style.textContent = `
-        /* Universal Selectors */
-        html, 
-        body,
-        #root,
-        #__next,
-        main,
-        .main,
-        article,
-        .content,
-        .container {
-          background-color: ${color} !important;
-        }
+            if (options.mode === 'background') {
+                styleContent = StyleManager.generateBackgroundStyles(options.color, platform, options.preserveImages);
+            } else if (options.mode === 'text') {
+                styleContent = StyleManager.generateTextStyles(options.color, platform);
+            }
 
-        /* YouTube Specific */
-        ytd-app,
-        #content,
-        ytd-browse,
-        ytd-two-column-browse-results-renderer,
-        ytd-rich-grid-renderer,
-        ytd-watch-flexy,
-        #primary,
-        ytd-guide-renderer,
-        #guide-content,
-        ytd-mini-guide-renderer,
-        ytd-multi-page-menu-renderer,
-        .html5-video-player {
-          background-color: ${color} !important;
-        }
+            // Add universal selectors as fallback
+            styleContent += StyleManager.generateUniversalStyles(options);
 
-        /* Twitter/X Specific */
-        .r-backgroundColor-1niwhzg,
-        [data-testid="primaryColumn"],
-        .css-1dbjc4n,
-        .r-14lw9ot,
-        .r-13qz1uu {
-          background-color: ${color} !important;
-        }
-
-        /* Facebook Specific */
-        ._li,
-        .x1n2onr6,
-        .x1vjfegm,
-        ._6s5d,
-        ._5h60 {
-          background-color: ${color} !important;
-        }
-
-        /* LinkedIn Specific */
-        .scaffold-layout__main,
-        .feed-shared-update-v2,
-        .core-rail,
-        .scaffold-layout {
-          background-color: ${color} !important;
-        }
-
-        /* Gmail Specific */
-        .ain,
-        .aic,
-        .nH,
-        .no,
-        .gb_Fd {
-          background-color: ${color} !important;
-        }
-
-        /* Reddit Specific */
-        .MainLayout,
-        .Post,
-        ._1VP69d9lk-Wk9zokOaylL,
-        .SubredditVars-r-popular {
-          background-color: ${color} !important;
-        }
-
-        /* Google Specific */
-        .RNNXgb,
-        #search,
-        #main,
-        .sfbg,
-        .minidiv {
-          background-color: ${color} !important;
-        }
-
-        /* Netflix Specific */
-        .mainView,
-        .watch-video,
-        .netflix-sans-font-loaded {
-          background-color: ${color} !important;
-        }
-
-        /* Amazon Specific */
-        #nav-belt,
-        #nav-main,
-        #desktop-grid-1,
-        .s-desktop-content {
-          background-color: ${color} !important;
-        }
-
-        /* Generic Modern Web Apps */
-        [role="main"],
-        [role="content"],
-        [role="presentation"],
-        .wrapper,
-        .page-content,
-        .content-wrapper,
-        .main-content,
-        .app-content,
-        #app,
-        #page-content,
-        .page-wrapper,
-        .viewport-container {
-          background-color: ${color} !important;
-        }
-
-        /* Common class patterns */
-        [class*="background"],
-        [class*="bg-"],
-        [class*="Background"],
-        [class*="container"],
-        [class*="wrapper"],
-        [class*="content"],
-        [class*="main"] {
-          background-color: ${color} !important;
-        }
-
-        /* Shadow DOM support */
-        :host,
-        ::shadow,
-        /deep/ {
-          background-color: ${color} !important;
-        }
-      `;
-
+            style.textContent = styleContent;
             document.head.appendChild(style);
 
-            // New approach for handling iframes
-            const message = {
-                type: 'APPLY_BACKGROUND_COLOR',
-                color: color,
-                styleContent: style.textContent
-            };
+            // Handle iframes
+            StyleManager.applyToIframes(options);
 
-            // Broadcast message to all frames
-            window.postMessage(message, '*');
-
-            // For same-origin iframes, we can still apply directly
-            const sameOriginIframes = Array.from(document.querySelectorAll('iframe')).filter(iframe => {
-                try {
-                    return !!iframe.contentDocument;
-                } catch {
-                    return false;
-                }
-            });
-
-            sameOriginIframes.forEach(iframe => {
-                try {
-                    const iframeStyle = iframe.contentDocument!.createElement('style');
-                    iframeStyle.setAttribute('data-eglion-color', 'true');
-                    iframeStyle.textContent = style.textContent;
-                    iframe.contentDocument!.head.appendChild(iframeStyle);
-                } catch (e) {
-                    console.warn('Could not modify same-origin iframe:', e);
-                }
-            });
-
+            return true;
         } catch (error) {
-            console.error('Error applying color:', error);
+            console.error('Error applying theme:', error);
+            return false;
         }
     };
+
+    private static detectPlatform(): string {
+        return detectPlatform();
+    }
+
+    private static generateBackgroundStyles(
+        color: string, 
+        platform: string, 
+        preserveImages: boolean = false
+    ): string {
+        let styles = '';
+        
+        if (platform === 'youtube') {
+            styles += `
+                /* Force background on YouTube */
+                ytd-app,
+                ytd-watch-flexy,
+                ytd-page-manager,
+                #content,
+                #page-manager,
+                #columns,
+                ytd-browse,
+                div[class*="style-scope"] {
+                    background-color: ${color} !important;
+                }
+                /* Override YouTube's background setting */
+                html[dark],
+                html[system-icons] {
+                    --yt-spec-base-background: ${color} !important;
+                    --yt-spec-raised-background: ${color} !important;
+                    --yt-spec-menu-background: ${color} !important;
+                }
+            `;
+        }
+
+        // Continue with regular platform selectors...
+        if (platform in StyleManager.platformSelectors) {
+            const selectors = StyleManager.platformSelectors[platform].background;
+            styles += `
+                ${selectors.join(',')} {
+                    background-color: ${color} !important;
+                }
+            `;
+        }
+
+        // Image handling
+        if (!preserveImages) {
+            styles += `
+                img, video, iframe, canvas, svg {
+                    background-color: transparent !important;
+                }
+            `;
+        }
+
+        return styles;
+    }
+
+    private static generateTextStyles(color: string, platform: string): string {
+        let styles = '';
+        
+        if (platform in StyleManager.platformSelectors) {
+            const selectors = StyleManager.platformSelectors[platform].text;
+            styles += `
+                ${selectors.join(',')} {
+                    color: ${color} !important;
+                }
+            `;
+        }
+
+        return styles;
+    }
+
+    private static generateUniversalStyles(options: ThemeOptions): string {
+        return `
+            /* Universal selectors as fallback */
+            html, body, #root, #__next, main, [role="main"] {
+                ${options.mode === 'background' ? `background-color: ${options.color} !important;` : ''}
+                ${options.mode === 'text' ? `color: ${options.color} !important;` : ''}
+                ${options.mode === 'custom' ? `--theme-color: ${options.color} !important;` : ''}
+            }
+        `;
+    }
+
+    static applyBackgroundColor = (
+        color: string, 
+        affectText = true, 
+        preserveImages = false,
+        doc: Document = document
+    ) => {
+        const style = doc.createElement('style');
+        style.setAttribute('data-eglion-color', 'true');
+        
+        style.textContent = `
+            /* Universal background override */
+            html, 
+            body,
+            #root,
+            #__next,
+            main,
+            .main,
+            article,
+            .content,
+            .container,
+            [role="main"] {
+                background-color: ${color} !important;
+                ${affectText ? `color: ${StyleManager.getContrastColor(color)} !important;` : ''}
+            }
+
+            ${preserveImages ? '' : `
+                img, 
+                video,
+                iframe,
+                canvas,
+                svg {
+                    background-color: transparent !important;
+                }
+            `}
+        `;
+
+        doc.head.appendChild(style);
+    };
+
+    static applyTextColor = (color: string, doc: Document = document) => {
+        const style = doc.createElement('style');
+        style.setAttribute('data-eglion-color', 'true');
+        
+        style.textContent = `
+            /* Text color override */
+            body,
+            p,
+            span,
+            h1, h2, h3, h4, h5, h6,
+            a:not(:hover),
+            div,
+            li,
+            input,
+            textarea,
+            select {
+                color: ${color} !important;
+            }
+        `;
+
+        doc.head.appendChild(style);
+    };
+
+    static applyCustomTheme = (color: string, doc: Document = document) => {
+        const style = doc.createElement('style');
+        style.setAttribute('data-eglion-color', 'true');
+        
+        style.textContent = `
+            :root {
+                --theme-color: ${color};
+                --theme-color-rgb: ${StyleManager.hexToRgb(color)};
+                --theme-contrast: ${StyleManager.getContrastColor(color)};
+            }
+
+            .theme-color,
+            .accent-color,
+            [data-theme-color] {
+                color: var(--theme-color) !important;
+            }
+
+            .theme-background,
+            [data-theme-background] {
+                background-color: var(--theme-color) !important;
+            }
+
+            .theme-border,
+            [data-theme-border] {
+                border-color: var(--theme-color) !important;
+            }
+        `;
+
+        doc.head.appendChild(style);
+    };
+
+    private static getContrastColor = (hexColor: string): string => {
+        const rgb = StyleManager.hexToRgb(hexColor);
+        if (!rgb) return '#000000';
+        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        return luminance > 0.5 ? '#000000' : '#ffffff';
+    };
+
+    private static hexToRgb = (hex: string): { r: number, g: number, b: number } | null => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    };
+
+    private static applyToIframes(options: ThemeOptions) {
+        try {
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                try {
+                    if (iframe.contentDocument) {
+                        // Remove existing styles in iframe
+                        iframe.contentDocument.querySelectorAll('style[data-eglion-color]')
+                            .forEach(el => el.remove());
+
+                        const style = iframe.contentDocument.createElement('style');
+                        style.setAttribute('data-eglion-color', 'true');
+                        
+                        let styleContent = '';
+                        const platform = StyleManager.detectPlatform();
+
+                        if (options.mode === 'background') {
+                            styleContent = StyleManager.generateBackgroundStyles(
+                                options.color, 
+                                platform, 
+                                options.preserveImages
+                            );
+                        } else if (options.mode === 'text') {
+                            styleContent = StyleManager.generateTextStyles(options.color, platform);
+                        }
+
+                        // Add universal styles
+                        styleContent += StyleManager.generateUniversalStyles(options);
+
+                        style.textContent = styleContent;
+                        iframe.contentDocument.head.appendChild(style);
+                    }
+                } catch (e) {
+                    console.warn('Could not modify iframe:', e);
+                }
+            });
+        } catch (error) {
+            console.error('Error handling iframes:', error);
+        }
+    }
 }

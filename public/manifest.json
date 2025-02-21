@@ -21,5 +21,11 @@
   "icons": {
     "32": "ICON.png",
     "128": "Icon-512.png"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["iframeHandler.js"]
+    }
+  ]
 }
