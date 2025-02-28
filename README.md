@@ -1,8 +1,29 @@
 # Ui-libertatem Chrome Extension
 
+<div align="center">
+  <img src="public/ICON.png" alt="Ui-libertatem Logo" width="128"/>
+  <h3>Customize web fonts and colors with ease</h3>
+</div>
+
 ## Overview
 
 Ui-libertatem is a powerful Chrome extension that allows users to customize web page fonts and colors in real-time. With advanced detection capabilities, it provides an intuitive interface for changing website appearance while maintaining readability and design consistency.
+
+## Screenshots
+
+### Font Changer
+<div align="center">
+  <img src="screenshots/fonts.png" alt="Font Changer Interface" width="400"/>
+  <p><em>Font detection and customization interface</em></p>
+</div>
+
+### Color Changer
+<div align="center">
+  <img src="screenshots/colors.png" alt="Color Changer Interface" width="400"/>
+  <p><em>Color detection and customization interface</em></p>
+</div>
+
+
 
 ## Features
 
@@ -69,8 +90,6 @@ Ui-libertatem is a powerful Chrome extension that allows users to customize web 
   - Font fingerprinting
   - Cross-origin iframe support
 
-
-
 ## Platform Support
 
 The extension includes optimized support for:
@@ -87,7 +106,6 @@ The extension includes optimized support for:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests.
-
 
 <div align="center">
   Made with ❤️ by Yonas Kumelachew<br>
